@@ -1,89 +1,92 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
+	"github.com/go-xorm/core"
+	"github.com/go-xorm/xorm"
+	"log"
 	"net/http"
-	"strconv"
-	//_ "github.com/go-sql-driver/mysql"
+	//"strconv"
 	"time"
 
-	//"fmt"
-
-	//"github.com/go-xorm/xorm"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/labstack/echo"
-	//"github.com/labstack/echo/middleware"
 )
 
-type (
-	user struct {
-		UID  int    `json:"uid"`
-		ID   int    `json:"id"`
-		Name string `json:"name"`
-	}
-)
+type userinfo struct {
+	uid  int    `json:"uid"`
+	id   int    `json:"id"`
+	name string `json:"name"`
+}
 
 var (
-	users = map[int]*user{}
-	seq   = 1
+	engine *xorm.Engine
 )
-
-var engine *xorm.Engine
 
 func main() {
 	var err error
-	engine, err := xorm.NewEngine("mysql", "root:Btpwns123@/simpleApi")
+	engine, err = xorm.NewEngine("mysql", "root:Btpwns123@/simple?charset=utf8&parseTime=True&loc=Local")
+	if err != nil {
+		fmt.Println(err)
+	}
+	engine.SetMaxIdleConns(10)
+	engine.SetMaxOpenConns(100)
+	engine.SetConnMaxLifetime(60 * time.Second)
+	engine.SetMapper(core.SameMapper{})
 
+	// echo 프레임워크 객체 생성
 	e := echo.New()
 
 	e.POST("/users", createUser)
-	e.GET("/users/:id", getUser)
-	e.PUT("/users/:id", updateUser)
-	e.DELETE("/users/:id", deleteUser)
+	//e.GET("/users/:id", getUser)
+	//e.PUT("/users/:id", updateUser)
+	//e.DELETE("/users/:id", deleteUser)
 
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
-	e.Logger.Fatal(e.Start(":1323"))
+	log.Fatal(e.Start(":1323"))
 }
 
-func getUser(c echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
-	u := &user{
-		ID: id,
-	}
-
-	has, _ := engine.Get(&u)
-
-	fmt.Println(has)
-
-	return c.JSON(http.StatusOK, users[id])
-}
+//func getUser(c echo.Context) error {
+//	//fmt.Println("hi")
+//	//id, _ := strconv.Atoi(c.Param("id"))
+//	//fmt.Println("hi")
+//	//user := new(userinfo)
+//	////userinfo.id = id
+//	//fmt.Println(user)
+//	//has, err := engine.Get(&user)
+//	//if err != nil {
+//	//	fmt.Errorf("error: %s \n", err)
+//	//}
+//	//fmt.Println(has)
+//	//
+//	return c.JSON(http.StatusOK, c)
+//}
 
 func createUser(c echo.Context) error {
-	u := &user{
-		ID: seq,
+	user := new(userinfo)
+	user.id = 3
+	user.name = "myname"
+	affected, err := engine.Insert(user)
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	engine.Insert(u)
+	fmt.Println("Insert ID", user.uid)
 
-	fmt.Println("Insert ID", u.uid)
-
-	return c.JSON(http.StatusCreated, result)
+	return c.JSON(http.StatusCreated, affected)
 }
 
-func updateUser(c echo.Context) error {
-	u := new(user)
-	if err := c.Bind(u); err != nil {
-		return err
-	}
-	id, _ := strconv.Atoi(c.Param("id"))
-	users[id].Name = u.Name
-	return c.JSON(http.StatusOK, users[id])
-}
-
-func deleteUser(c echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
-	delete(users, id)
-	return c.NoContent(http.StatusNoContent)
-}
+//func updateUser(c echo.Context) error {
+//	u := new(user)
+//	if err := c.Bind(u); err != nil {
+//		return err
+//	}
+//	id, _ := strconv.Atoi(c.Param("id"))
+//	users[id].Name = u.Name
+//	return c.JSON(http.StatusOK, users[id])
+//}
+//
+//func deleteUser(c echo.Context) error {
+//	id, _ := strconv.Atoi(c.Param("id"))
+//	delete(users, id)
+//	return c.NoContent(http.StatusNoContent)
+//}
